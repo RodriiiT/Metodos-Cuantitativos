@@ -31,10 +31,15 @@ Cada carpeta de tarea o proyecto principal estará acompañada de su propia docu
 El repositorio está organizado por tareas o proyectos principales. Cada uno se encuentra en su propia carpeta para mantener una estructura clara y modular.
 
 ├── Tarea IV/
+
 │   ├── ImagenesCorte/
+
 │   ├── PlanosCorte.py
+
 │   ├── README.md
+
 │   └── requeriments.txt
+
 └── README.md
 
 ---
