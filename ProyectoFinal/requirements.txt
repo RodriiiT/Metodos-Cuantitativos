@@ -1,0 +1,5 @@
+flet
+numpy
+scipy
+sympy
+matplotlib
