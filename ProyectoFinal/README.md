@@ -49,15 +49,15 @@ Salidas:
 ## Estructura del proyecto
 
 - [ProyectoFinal/aplicacion.py](ProyectoFinal/aplicacion.py:1) — punto de entrada de la app Flet.
-- Núcleo:
-  - [ProyectoFinal/núcleo/parser.py](ProyectoFinal/núcleo/parser.py:1) — parseo de variables, función objetivo, restricciones y gradiente.
-  - [ProyectoFinal/núcleo/problem.py](ProyectoFinal/núcleo/problem.py:1) — clase Problem y verificación de restricciones.
-  - [ProyectoFinal/núcleo/plotter.py](ProyectoFinal/núcleo/plotter.py:1) — generador de gráficos a base64 (1D/2D/3D).
-- Resolvedores:
-  - [ProyectoFinal/resolvedores/base.py](ProyectoFinal/resolvedores/base.py:1) — interfaz base y resultado del solver.
-  - [ProyectoFinal/resolvedores/gradient_descent.py](ProyectoFinal/resolvedores/gradient_descent.py:1) — gradiente descendente + SLSQP si hay restricciones.
-  - [ProyectoFinal/resolvedores/lagrange.py](ProyectoFinal/resolvedores/lagrange.py:1) — método de Lagrange (igualdades) + fallback SLSQP.
-  - [ProyectoFinal/resolvedores/unconstrained.py](ProyectoFinal/resolvedores/unconstrained.py:1) — métodos directos (BFGS/Nelder–Mead/Powell).
+- Core:
+  - [ProyectoFinal/core/parser.py](ProyectoFinal/core/parser.py:1) — parseo de variables, función objetivo, restricciones y gradiente.
+  - [ProyectoFinal/core/problem.py](ProyectoFinal/core/problem.py:1) — clase Problem y verificación de restricciones.
+  - [ProyectoFinal/core/plotter.py](ProyectoFinal/core/plotter.py:1) — generador de gráficos a base64 (1D/2D/3D).
+- Solvers:
+  - [ProyectoFinal/solvers/base.py](ProyectoFinal/solvers/base.py:1) — interfaz base y resultado del solver.
+  - [ProyectoFinal/solvers/gradient_descent.py](ProyectoFinal/solvers/gradient_descent.py:1) — gradiente descendente + SLSQP si hay restricciones.
+  - [ProyectoFinal/solvers/lagrange.py](ProyectoFinal/solvers/lagrange.py:1) — método de Lagrange (igualdades) + fallback SLSQP.
+  - [ProyectoFinal/solvers/unconstrained.py](ProyectoFinal/solvers/unconstrained.py:1) — métodos directos (BFGS/Nelder–Mead/Powell).
 - Interfaz:
   - [ProyectoFinal/interfaz/main_view.py](ProyectoFinal/interfaz/main_view.py:1) — UI moderna (Flet).
   - [ProyectoFinal/interfaz/__init__.py](ProyectoFinal/interfaz/__init__.py:1) — exporta OptimizationAppUI y app_main.

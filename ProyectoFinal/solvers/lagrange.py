@@ -31,48 +31,12 @@ class LagrangeSolver(OptimizationSolver):
     def _symbolic_attempt(self, problem: Problem, x0: Optional[np.ndarray]) -> Optional[SolverResult]:
         eqs = self._eq_constraints(problem)
         if not eqs:
-            return None
-
-        # Build Lagrangian: L(x, lambda) = f(x) + sum_i lam_i * h_i(x)
-        x_syms = sp.symbols(problem.variables)
-        lam_syms = sp.symbols(f"lam0:{len(eqs)}")
-        f_expr = problem.objective_expr
-        h_exprs = [e.expr for e in eqs]
-
-        L = f_expr
-        for lam, h in zip(lam_syms, h_exprs):
-            L = L + lam * h
-
-        # Stationarity conditions: dL/dx = 0
-        stationarity = [sp.diff(L, xi) for xi in x_syms]
-        feasibility = h_exprs[:]  # h_i(x) = 0
-
-        equations = stationarity + feasibility
-        unknowns = list(x_syms) + list(lam_syms)
-
-        # Initial guess for nsolve: [x0, zeros for lambdas]
-        if x0 is None:
-            x0 = np.zeros(len(problem.variables), dtype=float)
-        guess = list(np.asarray(x0, dtype=float).reshape(-1)) + [0.0] * len(lam_syms)
-
-        # Try nsolve first
-        try:
-            sol_vec = sp.nsolve(equations, unknowns, guess, tol=self.tol, maxsteps=100)
-            sol_vec = list(map(float, sol_vec))
-            x_sol = np.array(sol_vec[: problem.dim], dtype=float)
-            f_val = float(problem.evaluate(x_sol))
-            return SolverResult(
-                success=True,
-                x=x_sol,
-                fun=f_val,
-                message="Solución encontrada con multiplicadores de Lagrange (nsolve)",
-                method=self.name,
-                meta={"approach": "symbolic_nsolve"},
-            )
-        except Exception:
-            # Try algebraic solve (may return multiple solutions)
+            # If no constraints, solve unconstrained problem (gradient = 0)
+            x_syms = sp.symbols(problem.variables)
+            f_expr = problem.objective_expr
+            eqs_unconstrained = [sp.diff(f_expr, v) for v in x_syms]
             try:
-                sol_set = sp.solve(equations, unknowns, dict=True)
+                sol_set = sp.solve(eqs_unconstrained, x_syms, dict=True)
                 if not sol_set:
                     return None
                 best_x = None
@@ -92,12 +56,52 @@ class LagrangeSolver(OptimizationSolver):
                     success=True,
                     x=best_x,
                     fun=best_f,
-                    message="Solución encontrada con multiplicadores de Lagrange (solve)",
+                    message="Solución encontrada sin restricciones (gradiente = 0)",
                     method=self.name,
-                    meta={"approach": "symbolic_solve", "num_candidates": len(sol_set)},
+                    meta={"approach": "unconstrained_solve", "num_candidates": len(sol_set)},
                 )
             except Exception:
                 return None
+
+        # Build Lagrangian: L(x, lambda) = f(x) + sum_i lam_i * h_i(x)
+        x_syms = sp.symbols(problem.variables)
+        lam_syms = sp.symbols(f"lam0:{len(eqs)}")
+        f_expr = problem.objective_expr
+        h_exprs = [e.expr for e in eqs]
+
+        L = f_expr + sum(lam_syms[i] * h_exprs[i] for i in range(len(h_exprs)))
+
+        # Stationarity conditions: dL/dx = 0 and h_i(x) = 0
+        eqs_lagrange = [sp.diff(L, v) for v in x_syms] + h_exprs
+
+        # Solve the system
+        try:
+            soluciones = sp.solve(eqs_lagrange, x_syms + list(lam_syms), dict=True)
+            if not soluciones:
+                return None
+            best_x = None
+            best_f = None
+            for sol in soluciones:
+                try:
+                    x_sol = np.array([float(sol[xi]) for xi in x_syms], dtype=float)
+                    f_val = float(problem.evaluate(x_sol))
+                    if best_f is None or f_val < best_f:
+                        best_f = f_val
+                        best_x = x_sol
+                except Exception:
+                    continue
+            if best_x is None:
+                return None
+            return SolverResult(
+                success=True,
+                x=best_x,
+                fun=best_f,
+                message="Solución encontrada con multiplicadores de Lagrange",
+                method=self.name,
+                meta={"approach": "symbolic_solve", "num_candidates": len(soluciones)},
+            )
+        except Exception:
+            return None
 
     def _slsqp_fallback(self, problem: Problem, x0: np.ndarray) -> SolverResult:
         # Equality constraints only
@@ -136,18 +140,10 @@ class LagrangeSolver(OptimizationSolver):
         )
 
     def solve(self, problem: Problem, x0: Optional[np.ndarray] = None) -> SolverResult:
-        if len(problem.constraints) == 0:
-            return SolverResult(
-                success=False,
-                x=None,
-                fun=None,
-                message="El método de Lagrange requiere restricciones de igualdad.",
-                method=self.name,
-                meta={},
-            )
-
         eqs = self._eq_constraints(problem)
-        if not eqs:
+
+        # If no equality constraints, but there are inequality constraints, fail
+        if not eqs and len(problem.constraints) > 0:
             return SolverResult(
                 success=False,
                 x=None,
@@ -159,10 +155,21 @@ class LagrangeSolver(OptimizationSolver):
 
         x0v = problem.initial_guess(None if x0 is None else list(x0))
 
-        # 1) Try symbolic approach
+        # 1) Try symbolic approach (handles both constrained and unconstrained)
         sym_res = self._symbolic_attempt(problem, x0v)
         if sym_res is not None and sym_res.success:
             return sym_res
 
-        # 2) Fallback to SLSQP numeric
-        return self._slsqp_fallback(problem, x0v)
+        # 2) Fallback to SLSQP numeric (only if there are equality constraints)
+        if eqs:
+            return self._slsqp_fallback(problem, x0v)
+        else:
+            # No constraints, symbolic should have worked, but if not, fail
+            return SolverResult(
+                success=False,
+                x=None,
+                fun=None,
+                message="No se pudo resolver el problema sin restricciones.",
+                method=self.name,
+                meta={},
+            )

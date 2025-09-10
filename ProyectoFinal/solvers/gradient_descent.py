@@ -30,55 +30,33 @@ class GradientDescentSolver(OptimizationSolver):
         self.armijo_c = armijo_c
 
     def _unconstrained_gd(self, problem: Problem, x0: np.ndarray) -> SolverResult:
-        x = x0.copy().astype(float)
-        meta: Dict[str, Any] = {"iterations": 0, "grad_norms": []}
+        current_point = x0.copy().astype(float)
+        meta: Dict[str, Any] = {"iterations": 0}
 
-        fx = problem.evaluate(x)
-        for k in range(self.max_iters):
-            g = problem.gradient(x)
-            gnorm = float(np.linalg.norm(g))
-            meta["grad_norms"].append(gnorm)
+        for i in range(self.max_iters):
+            grad_vals = problem.gradient(current_point)
+            next_point = current_point - self.init_step * grad_vals  # init_step as learning_rate
 
-            if gnorm < self.tol:
-                meta["iterations"] = k
+            if np.linalg.norm(next_point - current_point) < self.tol:
+                current_point = next_point
+                meta["iterations"] = i + 1
+                fx = problem.evaluate(current_point)
                 return SolverResult(
                     success=True,
-                    x=x,
+                    x=current_point,
                     fun=fx,
-                    message="Convergencia por norma del gradiente",
+                    message="Convergencia por cambio pequeño en el punto",
                     method=self.name + " (sin restricciones)",
                     meta=meta,
                 )
 
-            # Backtracking line search (Armijo)
-            t = self.init_step
-            dir = -g
-            # Armijo condition: f(x + t*dir) <= f(x) + c*t*grad^T*dir
-            while True:
-                xn = x + t * dir
-                fn = problem.evaluate(xn)
-                if fn <= fx + self.armijo_c * t * float(np.dot(g, dir)):
-                    break
-                t *= self.backtrack_beta
-                if t < 1e-12:
-                    # Step size vanished
-                    meta["iterations"] = k
-                    return SolverResult(
-                        success=False,
-                        x=x,
-                        fun=fx,
-                        message="Fallo de búsqueda de línea (paso muy pequeño)",
-                        method=self.name + " (sin restricciones)",
-                        meta=meta,
-                    )
-
-            x = xn
-            fx = fn
+            current_point = next_point
 
         meta["iterations"] = self.max_iters
+        fx = problem.evaluate(current_point)
         return SolverResult(
             success=False,
-            x=x,
+            x=current_point,
             fun=fx,
             message="Máximo de iteraciones alcanzado",
             method=self.name + " (sin restricciones)",

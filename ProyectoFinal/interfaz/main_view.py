@@ -6,11 +6,11 @@ from typing import Dict, List, Optional, Tuple
 import flet as ft
 import numpy as np
 
-from ProyectoFinal.núcleo import ExpressionParser, Problem, Plotter, ConstraintCheck
-from ProyectoFinal.resolvedores.gradient_descent import GradientDescentSolver
-from ProyectoFinal.resolvedores.lagrange import LagrangeSolver
-from ProyectoFinal.resolvedores.unconstrained import UnconstrainedDirectSolver
-from ProyectoFinal.resolvedores.base import SolverResult
+from ProyectoFinal.core import ExpressionParser, Problem, Plotter, ConstraintCheck
+from ProyectoFinal.solvers.gradient_descent import GradientDescentSolver
+from ProyectoFinal.solvers.lagrange import LagrangeSolver
+from ProyectoFinal.solvers.unconstrained import UnconstrainedDirectSolver
+from ProyectoFinal.solvers.base import SolverResult
 
 
 @dataclass
